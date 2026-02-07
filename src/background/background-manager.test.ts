@@ -1084,6 +1084,73 @@ describe('BackgroundTaskManager', () => {
       expect(manager.isAgentAllowed('unknown-session', 'oracle')).toBe(true);
     });
 
+    test('unknown agent type defaults to explorer-only delegation', async () => {
+      const ctx = createMockContext();
+      const manager = new BackgroundTaskManager(ctx);
+
+      // Launch a task with an agent type not in SUBAGENT_DELEGATION_RULES
+      const customTask = manager.launch({
+        agent: 'custom-agent',
+        prompt: 'test',
+        description: 'test',
+        parentSessionId: 'root-session',
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const customSessionId = customTask.sessionId;
+      if (!customSessionId) throw new Error('Expected sessionId to be defined');
+
+      // Unknown agent types should default to explorer-only
+      expect(manager.getAllowedSubagents(customSessionId)).toEqual([
+        'explorer',
+      ]);
+      expect(manager.isAgentAllowed(customSessionId, 'explorer')).toBe(true);
+      expect(manager.isAgentAllowed(customSessionId, 'fixer')).toBe(false);
+      expect(manager.isAgentAllowed(customSessionId, 'oracle')).toBe(false);
+    });
+
+    test('unknown agent type gets delegation tools enabled', async () => {
+      const ctx = createMockContext();
+      const manager = new BackgroundTaskManager(ctx);
+
+      // Launch a known agent first to get a tracked session
+      const parentTask = manager.launch({
+        agent: 'custom-agent',
+        prompt: 'test',
+        description: 'test',
+        parentSessionId: 'root-session',
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const parentSessionId = parentTask.sessionId;
+      if (!parentSessionId) throw new Error('Expected sessionId to be defined');
+
+      // Launch a subagent from the custom agent
+      manager.launch({
+        agent: 'explorer',
+        prompt: 'test',
+        description: 'test',
+        parentSessionId: parentSessionId,
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Tools should be enabled since custom-agent defaults to ['explorer']
+      const promptCalls = ctx.client.session.prompt.mock.calls as Array<
+        [{ body: { tools?: Record<string, boolean> } }]
+      >;
+      const lastCall = promptCalls[promptCalls.length - 1];
+      expect(lastCall[0].body.tools).toEqual({
+        background_task: true,
+        task: true,
+      });
+    });
+
     test('getAllowedSubagents returns correct lists', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);

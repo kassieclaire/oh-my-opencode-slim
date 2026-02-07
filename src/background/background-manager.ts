@@ -128,6 +128,19 @@ export class BackgroundTaskManager {
   }
 
   /**
+   * Look up the delegation rules for an agent type.
+   * Unknown agent types default to explorer-only access, making it easy
+   * to add new background agent types without updating SUBAGENT_DELEGATION_RULES.
+   */
+  private getSubagentRules(agentName: string): readonly string[] {
+    return (
+      SUBAGENT_DELEGATION_RULES[
+        agentName as keyof typeof SUBAGENT_DELEGATION_RULES
+      ] ?? ['explorer']
+    );
+  }
+
+  /**
    * Check if a parent session is allowed to delegate to a specific agent type.
    * @param parentSessionId - The session ID of the parent
    * @param requestedAgent - The agent type being requested
@@ -138,12 +151,9 @@ export class BackgroundTaskManager {
     const parentAgentName =
       this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
-    const allowedSubagents =
-      SUBAGENT_DELEGATION_RULES[
-        parentAgentName as keyof typeof SUBAGENT_DELEGATION_RULES
-      ];
+    const allowedSubagents = this.getSubagentRules(parentAgentName);
 
-    if (!allowedSubagents || allowedSubagents.length === 0) return false;
+    if (allowedSubagents.length === 0) return false;
 
     return allowedSubagents.includes(requestedAgent);
   }
@@ -158,11 +168,7 @@ export class BackgroundTaskManager {
     const parentAgentName =
       this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
-    return (
-      SUBAGENT_DELEGATION_RULES[
-        parentAgentName as keyof typeof SUBAGENT_DELEGATION_RULES
-      ] ?? []
-    );
+    return this.getSubagentRules(parentAgentName);
   }
 
   /**
@@ -275,13 +281,10 @@ export class BackgroundTaskManager {
       this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
     // Check if the parent agent is allowed to delegate to any subagents
-    const allowedSubagents =
-      SUBAGENT_DELEGATION_RULES[
-        parentAgentName as keyof typeof SUBAGENT_DELEGATION_RULES
-      ];
+    const allowedSubagents = this.getSubagentRules(parentAgentName);
 
     // If the parent agent has no allowed subagents, disable delegation tools
-    if (!allowedSubagents || allowedSubagents.length === 0) {
+    if (allowedSubagents.length === 0) {
       return { background_task: false, task: false };
     }
 
