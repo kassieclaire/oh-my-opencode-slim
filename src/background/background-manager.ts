@@ -134,8 +134,9 @@ export class BackgroundTaskManager {
    * @returns true if allowed, false if not
    */
   isAgentAllowed(parentSessionId: string, requestedAgent: string): boolean {
-    const parentAgentName = this.agentBySessionId.get(parentSessionId);
-    if (!parentAgentName) return false;
+    // Untracked sessions are the root orchestrator (created by OpenCode, not by us)
+    const parentAgentName =
+      this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
     const allowedSubagents =
       SUBAGENT_DELEGATION_RULES[
@@ -153,8 +154,9 @@ export class BackgroundTaskManager {
    * @returns Array of allowed agent names, empty if none
    */
   getAllowedSubagents(parentSessionId: string): readonly string[] {
-    const parentAgentName = this.agentBySessionId.get(parentSessionId);
-    if (!parentAgentName) return [];
+    // Untracked sessions are the root orchestrator (created by OpenCode, not by us)
+    const parentAgentName =
+      this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
     return (
       SUBAGENT_DELEGATION_RULES[
@@ -268,15 +270,9 @@ export class BackgroundTaskManager {
     task: boolean;
   } {
     // Look up the parent agent type from our session tracking
-    const parentAgentName = this.agentBySessionId.get(parentSessionId);
-
-    // If we can't determine the parent agent type, default to no delegation (safe fallback)
-    if (!parentAgentName) {
-      log(
-        `[background-manager] unknown parent session ${parentSessionId}, disabling delegation`,
-      );
-      return { background_task: false, task: false };
-    }
+    // Untracked sessions are the root orchestrator (created by OpenCode, not by us)
+    const parentAgentName =
+      this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
 
     // Check if the parent agent is allowed to delegate to any subagents
     const allowedSubagents =

@@ -946,11 +946,11 @@ describe('BackgroundTaskManager', () => {
       });
     });
 
-    test('unknown parent session defaults to no delegation', async () => {
+    test('unknown parent session defaults to orchestrator delegation', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
-      // Launch task from unknown parent session
+      // Launch task from unknown parent session (root orchestrator)
       manager.launch({
         agent: 'explorer',
         prompt: 'test',
@@ -965,9 +965,11 @@ describe('BackgroundTaskManager', () => {
         [{ body: { tools?: Record<string, boolean> } }]
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
+      // Root orchestrator allows delegation, but explorer is a leaf agent
+      // so its spawned children still get delegation based on orchestrator rules
       expect(lastCall[0].body.tools).toEqual({
-        background_task: false,
-        task: false,
+        background_task: true,
+        task: true,
       });
     });
 
@@ -1070,11 +1072,16 @@ describe('BackgroundTaskManager', () => {
       );
     });
 
-    test('isAgentAllowed returns false for unknown session', () => {
+    test('isAgentAllowed treats unknown session as root orchestrator', () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
-      expect(manager.isAgentAllowed('unknown-session', 'explorer')).toBe(false);
+      // Unknown sessions default to orchestrator, which can delegate to all subagents
+      expect(manager.isAgentAllowed('unknown-session', 'explorer')).toBe(true);
+      expect(manager.isAgentAllowed('unknown-session', 'fixer')).toBe(true);
+      expect(manager.isAgentAllowed('unknown-session', 'designer')).toBe(true);
+      expect(manager.isAgentAllowed('unknown-session', 'librarian')).toBe(true);
+      expect(manager.isAgentAllowed('unknown-session', 'oracle')).toBe(true);
     });
 
     test('getAllowedSubagents returns correct lists', async () => {
@@ -1156,8 +1163,14 @@ describe('BackgroundTaskManager', () => {
 
       expect(manager.getAllowedSubagents(explorerSessionId)).toEqual([]);
 
-      // Unknown session -> empty
-      expect(manager.getAllowedSubagents('unknown-session')).toEqual([]);
+      // Unknown session -> orchestrator (all subagents)
+      expect(manager.getAllowedSubagents('unknown-session')).toEqual([
+        'explorer',
+        'librarian',
+        'oracle',
+        'designer',
+        'fixer',
+      ]);
     });
   });
 });
