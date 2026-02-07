@@ -133,11 +133,21 @@ export class BackgroundTaskManager {
    * to add new background agent types without updating SUBAGENT_DELEGATION_RULES.
    */
   private getSubagentRules(agentName: string): readonly string[] {
-    return (
-      SUBAGENT_DELEGATION_RULES[
-        agentName as keyof typeof SUBAGENT_DELEGATION_RULES
-      ] ?? ['explorer']
-    );
+    const rules = SUBAGENT_DELEGATION_RULES[
+      agentName as keyof typeof SUBAGENT_DELEGATION_RULES
+    ] ?? ['explorer'];
+
+    // Filter out granular fixers when the experimental flag is disabled,
+    // keeping delegation rules consistent with the agents actually created
+    // by createAgents().
+    const granularFixers = this.config?.experimental?.granularFixers ?? false;
+    if (!granularFixers) {
+      return rules.filter(
+        (name) => name !== 'long-fixer' && name !== 'quick-fixer',
+      );
+    }
+
+    return rules;
   }
 
   /**

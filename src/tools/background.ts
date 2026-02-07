@@ -24,7 +24,14 @@ export function createBackgroundTools(
   _tmuxConfig?: TmuxConfig,
   _pluginConfig?: PluginConfig,
 ): Record<string, ToolDefinition> {
-  const agentNames = SUBAGENT_NAMES.join(', ');
+  const granularFixersEnabled =
+    _pluginConfig?.experimental?.granularFixers ?? false;
+  const agentNames = SUBAGENT_NAMES.filter((name) => {
+    if (name === 'long-fixer' || name === 'quick-fixer') {
+      return granularFixersEnabled;
+    }
+    return true;
+  }).join(', ');
 
   // Tool for launching agent tasks (fire-and-forget)
   const background_task = tool({
