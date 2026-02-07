@@ -705,7 +705,7 @@ describe('BackgroundTaskManager', () => {
   });
 
   describe('subagent delegation restrictions', () => {
-    test('orchestrator can delegate to all subagents (tools enabled)', async () => {
+    test('spawned explorer gets tools disabled (leaf node)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
@@ -725,7 +725,7 @@ describe('BackgroundTaskManager', () => {
       if (!orchestratorSessionId)
         throw new Error('Expected sessionId to be defined');
 
-      // Now launch a subagent from orchestrator - should have tools enabled
+      // Launch explorer from orchestrator - explorer is a leaf node so tools disabled
       manager.launch({
         agent: 'explorer',
         prompt: 'test',
@@ -736,18 +736,18 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Check that the prompt was called with tools enabled
+      // Explorer cannot delegate, so delegation tools are hidden
       const promptCalls = ctx.client.session.prompt.mock.calls as Array<
         [{ body: { tools?: Record<string, boolean> } }]
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
       expect(lastCall[0].body.tools).toEqual({
-        background_task: true,
-        task: true,
+        background_task: false,
+        task: false,
       });
     });
 
-    test('explorer cannot delegate to any subagents (tools disabled)', async () => {
+    test('spawned fixer gets tools enabled (can delegate to explorer)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
@@ -762,7 +762,7 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Now try to launch from explorer - should have tools disabled
+      // Launch fixer from explorer - fixer can delegate to explorer, so tools enabled
       const explorerSessionId = explorerTask.sessionId;
       if (!explorerSessionId)
         throw new Error('Expected sessionId to be defined');
@@ -777,18 +777,18 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Check that the prompt was called with tools disabled
+      // Fixer can delegate (to explorer), so delegation tools are enabled
       const promptCalls = ctx.client.session.prompt.mock.calls as Array<
         [{ body: { tools?: Record<string, boolean> } }]
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
       expect(lastCall[0].body.tools).toEqual({
-        background_task: false,
-        task: false,
+        background_task: true,
+        task: true,
       });
     });
 
-    test('fixer can delegate to explorer only', async () => {
+    test('spawned explorer from fixer gets tools disabled (leaf node)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
@@ -803,7 +803,7 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Launch subagent from fixer - should have tools enabled
+      // Launch explorer from fixer - explorer is a leaf node so tools disabled
       const fixerSessionId = fixerTask.sessionId;
       if (!fixerSessionId) throw new Error('Expected sessionId to be defined');
 
@@ -822,12 +822,12 @@ describe('BackgroundTaskManager', () => {
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
       expect(lastCall[0].body.tools).toEqual({
-        background_task: true,
-        task: true,
+        background_task: false,
+        task: false,
       });
     });
 
-    test('designer can delegate to explorer', async () => {
+    test('spawned explorer from designer gets tools disabled (leaf node)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
@@ -842,7 +842,7 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Launch subagent from designer - should have tools enabled
+      // Launch explorer from designer - explorer is a leaf node so tools disabled
       const designerSessionId = designerTask.sessionId;
       if (!designerSessionId)
         throw new Error('Expected sessionId to be defined');
@@ -862,8 +862,8 @@ describe('BackgroundTaskManager', () => {
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
       expect(lastCall[0].body.tools).toEqual({
-        background_task: true,
-        task: true,
+        background_task: false,
+        task: false,
       });
     });
 
@@ -946,11 +946,11 @@ describe('BackgroundTaskManager', () => {
       });
     });
 
-    test('unknown parent session defaults to orchestrator delegation', async () => {
+    test('spawned explorer from unknown parent gets tools disabled (leaf node)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
-      // Launch task from unknown parent session (root orchestrator)
+      // Launch explorer from unknown parent session (root orchestrator)
       manager.launch({
         agent: 'explorer',
         prompt: 'test',
@@ -965,11 +965,10 @@ describe('BackgroundTaskManager', () => {
         [{ body: { tools?: Record<string, boolean> } }]
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
-      // Root orchestrator allows delegation, but explorer is a leaf agent
-      // so its spawned children still get delegation based on orchestrator rules
+      // Explorer is a leaf agent — tools disabled regardless of parent
       expect(lastCall[0].body.tools).toEqual({
-        background_task: true,
-        task: true,
+        background_task: false,
+        task: false,
       });
     });
 
@@ -1111,11 +1110,11 @@ describe('BackgroundTaskManager', () => {
       expect(manager.isAgentAllowed(customSessionId, 'oracle')).toBe(false);
     });
 
-    test('unknown agent type gets delegation tools enabled', async () => {
+    test('spawned explorer from custom agent gets tools disabled (leaf node)', async () => {
       const ctx = createMockContext();
       const manager = new BackgroundTaskManager(ctx);
 
-      // Launch a known agent first to get a tracked session
+      // Launch a custom agent first to get a tracked session
       const parentTask = manager.launch({
         agent: 'custom-agent',
         prompt: 'test',
@@ -1129,7 +1128,7 @@ describe('BackgroundTaskManager', () => {
       const parentSessionId = parentTask.sessionId;
       if (!parentSessionId) throw new Error('Expected sessionId to be defined');
 
-      // Launch a subagent from the custom agent
+      // Launch explorer from custom agent - explorer is leaf, tools disabled
       manager.launch({
         agent: 'explorer',
         prompt: 'test',
@@ -1140,14 +1139,14 @@ describe('BackgroundTaskManager', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      // Tools should be enabled since custom-agent defaults to ['explorer']
+      // Explorer is a leaf agent — tools disabled regardless of parent
       const promptCalls = ctx.client.session.prompt.mock.calls as Array<
         [{ body: { tools?: Record<string, boolean> } }]
       >;
       const lastCall = promptCalls[promptCalls.length - 1];
       expect(lastCall[0].body.tools).toEqual({
-        background_task: true,
-        task: true,
+        background_task: false,
+        task: false,
       });
     });
 

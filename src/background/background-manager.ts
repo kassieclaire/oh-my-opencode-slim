@@ -265,30 +265,25 @@ export class BackgroundTaskManager {
   }
 
   /**
-   * Calculate tool permissions for a subagent based on the parent agent's delegation rules.
-   * Uses SUBAGENT_DELEGATION_RULES to determine which subagents the parent can spawn.
+   * Calculate tool permissions for a spawned agent based on its own delegation rules.
+   * Agents that cannot delegate (leaf nodes) get delegation tools disabled entirely,
+   * preventing models from even seeing tools they can never use.
    *
-   * @param parentSessionId - The session ID of the parent agent spawning the subagent
-   * @returns Tool permissions object with background_task and task enabled/disabled per subagent type
+   * @param agentName - The agent type being spawned
+   * @returns Tool permissions object with background_task and task enabled/disabled
    */
-  private calculateToolPermissions(parentSessionId: string): {
+  private calculateToolPermissions(agentName: string): {
     background_task: boolean;
     task: boolean;
   } {
-    // Look up the parent agent type from our session tracking
-    // Untracked sessions are the root orchestrator (created by OpenCode, not by us)
-    const parentAgentName =
-      this.agentBySessionId.get(parentSessionId) ?? 'orchestrator';
+    const allowedSubagents = this.getSubagentRules(agentName);
 
-    // Check if the parent agent is allowed to delegate to any subagents
-    const allowedSubagents = this.getSubagentRules(parentAgentName);
-
-    // If the parent agent has no allowed subagents, disable delegation tools
+    // Leaf agents (no delegation rules) get tools hidden entirely
     if (allowedSubagents.length === 0) {
       return { background_task: false, task: false };
     }
 
-    // Parent agent can delegate to some subagents - enable the delegation tools
+    // Agent can delegate - enable the delegation tools
     // The restriction of WHICH specific subagents are allowed is enforced
     // by the background_task tool via isAgentAllowed()
     return { background_task: true, task: true };
@@ -333,10 +328,8 @@ export class BackgroundTaskManager {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      // Calculate tool permissions based on parent agent's delegation rules
-      const toolPermissions = this.calculateToolPermissions(
-        task.parentSessionId,
-      );
+      // Calculate tool permissions based on the spawned agent's own delegation rules
+      const toolPermissions = this.calculateToolPermissions(task.agent);
 
       // Send prompt
       const promptQuery: Record<string, string> = { directory: this.directory };
