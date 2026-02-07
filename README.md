@@ -245,8 +245,8 @@ When `experimental.granularFixers` is enabled, the orchestrator routes tasks to 
 
 | Variant | Purpose | Use Case | Recommended Models |
 |---------|---------|----------|-------------------|
-| `quick-fixer` | Ultra-fast single-file edits | Independent parallel tasks, simple bugfixes | `qwen/qwen-3-coder-next`, `google/gemini-3-flash`, `openai/gpt-5.1-codex-mini` |
-| `long-fixer` | Sustained multi-file context | Complex refactors, interdependent changes | `anthropic/claude-opus-4.6`, `openai/gpt-5.3-codex`, `kimi-for-coding/k2.5` |
+| `quick-fixer` | Ultra-fast single-file edits | Independent parallel tasks, simple bugfixes | `qwen/qwen3-coder-next`, `google/gemini-3-flash-preview`, `openai/gpt-5.1-codex-mini` |
+| `long-fixer` | Sustained multi-file context | Complex refactors, interdependent changes | `anthropic/claude-opus-4.6`, `openai/gpt-5.3-codex`, `moonshotai/kimi-k2.5` |
 
 ---
 

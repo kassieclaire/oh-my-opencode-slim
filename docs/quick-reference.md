@@ -521,8 +521,8 @@ When enabled, the orchestrator analyzes tasks and routes them to the appropriate
 
 | Variant | Best For | Model Strategy |
 |---------|----------|----------------|
-| `quick-fixer` | Single-file edits, independent tasks, simple bugfixes | Fast, cost-effective models (`qwen/qwen-3-coder-next`, `google/gemini-3-flash`, `openai/gpt-5.1-codex-mini`) |
-| `long-fixer` | Multi-file refactors, interdependent changes, complex architecture | Strong reasoning models (`anthropic/claude-opus-4.6`, `openai/gpt-5.3-codex`, `kimi-for-coding/k2.5`) |
+| `quick-fixer` | Single-file edits, independent tasks, simple bugfixes | Fast, cost-effective models (`qwen/qwen3-coder-next`, `google/gemini-3-flash-preview`, `openai/gpt-5.1-codex-mini`) |
+| `long-fixer` | Multi-file refactors, interdependent changes, complex architecture | Strong reasoning models (`anthropic/claude-opus-4.6`, `openai/gpt-5.3-codex`, `moonshotai/kimi-k2.5`) |
 
 **Routing Logic:**
 - 3+ independent tasks → Spawn multiple `quick-fixer` agents in parallel
